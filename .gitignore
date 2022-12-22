@@ -1,3 +1,8 @@
+# Executável
+*
+!/**/
+!*.*
+
 # Prerequisites
 *.d
 
@@ -50,6 +55,3 @@ modules.order
 Module.symvers
 Mkfile.old
 dkms.conf
-
-# Executável
-exec
