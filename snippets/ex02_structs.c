@@ -3,6 +3,9 @@
 #include <time.h>
 
 #define QUEUE_SIZE 10
+#define RANDOM_MODE 1
+#define STATIC_MODE 2
+#define DYNAMIC_MODE 3
 
 typedef struct
 {
@@ -13,6 +16,7 @@ typedef struct
     char *file_name;
     int prev_id;
     int next_id;
+    int priority;
 } process;
 
 typedef struct
@@ -27,12 +31,37 @@ typedef struct
 {
     int context_switches;
     int next_pid;
+    int priority_mode;
     queue *low_priority;  // low priority
     queue *high_priority; // high priority
     queue *mid_priority;  // mid priority
 } os;
 
-void add_to_proc_table(os *os, queue *q, char *file_name)
+void initialize_queue(queue *q)
+{
+    //q = (queue *) malloc(sizeof(queue));
+    q->first_id = -1;
+    q->last_id = -1;
+    q->size = 0;
+    for (int i = 0; i < QUEUE_SIZE; i++)
+        q->proc_table[i].pid = -1;
+}
+
+void initialize_os(os *sys)
+{
+    sys->context_switches = 0;
+    sys->next_pid = 0;
+    sys->priority_mode = STATIC_MODE;
+    sys->high_priority = malloc(sizeof(queue));
+    initialize_queue(sys->high_priority);
+    sys->mid_priority = malloc(sizeof(queue));
+    initialize_queue(sys->mid_priority);
+    sys->low_priority = malloc(sizeof(queue));
+    initialize_queue(sys->low_priority);  //TODO: AQUI O ERRO
+    
+}
+
+void add_to_proc_table(os *os, queue *q, char *file_name, int priority)
 {
     // printf("add_to_proc_table\n");
     q->size++;
@@ -52,6 +81,7 @@ void add_to_proc_table(os *os, queue *q, char *file_name)
         q->proc_table[id].pid = os->next_pid;
         q->proc_table[id].prev_id = q->last_id;
         q->proc_table[id].next_id = -1;
+        q->proc_table[id].priority = priority;
         // printf("add process %d, pos %d\n", q->proc_table[id].pid, id);
         if (q->size == 1)
             q->first_id = id;
@@ -65,11 +95,11 @@ void add_process(os *os, int priority, char *file_name)
 {
     // printf("add_process\n");
     if (priority == 1)
-        add_to_proc_table(os, os->high_priority, file_name);
+        add_to_proc_table(os, os->high_priority, file_name, 1);
     else if (priority == 2)
-        add_to_proc_table(os, os->high_priority, file_name);
+        add_to_proc_table(os, os->high_priority, file_name, 2);
     else
-        add_to_proc_table(os, os->high_priority, file_name);
+        add_to_proc_table(os, os->high_priority, file_name, 3);
     os->next_pid++;
 }
 
@@ -97,10 +127,21 @@ void delete_process(os *os, int pid)
             delete_from_proc_table(os->high_priority, i, pid);
 }
 
+void realocate_process(os *os, queue *q) {
+    if (os->priority_mode == RANDOM_MODE) {
+        // TODO: Continuar daqui
+    } else if (os->priority_mode == STATIC_MODE) {
+
+    } else if (os->priority_mode == DYNAMIC_MODE) {
+
+    }
+}
+
+
 void check_queue_order(queue *q)
 {
     int id = q->first_id;
-    printf("fila ");
+    printf("%d, fila ", q->size);
     while (id != -1)
     {
         printf("%d ", q->proc_table[id].pid);
@@ -109,28 +150,7 @@ void check_queue_order(queue *q)
     printf("\n");
 }
 
-void initialize_queue(queue *q)
-{
-    //q = (queue *) malloc(sizeof(queue));
-    q->first_id = -1;
-    q->last_id = -1;
-    q->size = 0;
-    for (int i = 0; i < QUEUE_SIZE; i++)
-        q->proc_table[i].pid = -1;
-}
 
-void initialize_os(os *sys)
-{
-    sys->context_switches = 0;
-    sys->next_pid = 0;
-    sys->high_priority = malloc(sizeof(queue));
-    initialize_queue(sys->high_priority);
-    sys->mid_priority = malloc(sizeof(queue));
-    initialize_queue(sys->mid_priority);
-    sys->low_priority = malloc(sizeof(queue));
-    initialize_queue(sys->low_priority);  //TODO: AQUI O ERRO
-    
-}
 
 int main()
 {
