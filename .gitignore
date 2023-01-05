@@ -1,7 +1,5 @@
-# Executável
-*
-!/**/
-!*.*
+temp/
+.vscode/
 
 # Prerequisites
 *.d
