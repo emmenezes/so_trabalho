@@ -23,7 +23,8 @@ int main()
     }
     printf("%d\n", pid);
     if (pid == 0) {
-        execl("s21_execl_filho", "s21_execl_filho", (char*) 0);
+        execlp("./ex04", "ex04", (char*) 0);
+        return(0);
     }
     printf("continuo o codigo do pai\n");
     sleep(20);
