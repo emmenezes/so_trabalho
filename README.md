@@ -57,11 +57,11 @@ O que faz:
         - tempo total de execução
         - número de trocas de contexto
     - para filho no quantum
-4. execprocd 2 **
+4. execprocd 2
     - fila de arquivos
     - recebe arquivos do exeproc
     - recebe cancela_proc e termina (impressões)
-5. execprocd 3
+5. execprocd 3 **
     - fila de prioridades
 6. execprocd final ** 
 
