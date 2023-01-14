@@ -143,7 +143,7 @@ void add_proc(scheduler *s, queue *q, proc *t)
     {
         char s[] = "./";
         strcat(s, msg_rcv.file_name);
-        kill(getpid(), SIGSTOP);    // TODO: Processo se matando
+        kill(getpid(), SIGSTOP);
         execlp(s, msg_rcv.file_name, (char *)0);
     }
     int priority = msg_rcv.priority -1;
@@ -167,13 +167,13 @@ void add_proc(scheduler *s, queue *q, proc *t)
             else
                 t[q[priority].last_id].next_id = i;
             q[priority].last_id = i;
-            printf("processo %d adicionado na pos %d, pid %d\n", t[i].id, i, t[i].pid);
+            printf("proc %d na pos %d, pid %d\n", t[i].id, i, t[i].pid);
             s->next_id++;
             break;
         }
     }
     if (id == -1)
-        printf("erro, fila sem espaco para adicionar novo processo\n");
+        printf("\nerro, fila sem espaco para adicionar novo processo\n\n");
 }
 
 void relocate_proc(scheduler *s, queue *q, proc *t)
@@ -222,7 +222,7 @@ void kill_proc(scheduler *s, queue *q, proc *t) {
         }
     }
     if (id == -1) {
-        printf("proc %d nao encontrado\n\n", rm_proc_id);
+        printf("\nproc %d nao encontrado\n\n", rm_proc_id);
         return;
     }
     time_t now;
@@ -241,9 +241,10 @@ void kill_proc(scheduler *s, queue *q, proc *t) {
     if (q[priority].last_id == id)
         q[priority].last_id = t[id].prev_id;
     kill(t[id].pid, SIGKILL);
-    t[id].id = -1;
     wait(&estado);
-    printf("proc %d encerrado\ntempo total %ld\ntrocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
+    // printf("proc %d encerrado\ntempo total %ld\ntrocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
+    printf("proc %d encerrado, tempo total %ld, trocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
+    t[id].id = -1;
 }
 
 void remove_proc(scheduler *s, queue *q, proc *t) {
@@ -257,13 +258,22 @@ void remove_proc(scheduler *s, queue *q, proc *t) {
     t[id].next_id = -1;
     time_t now;
     time_t end_time = time(&now);
-    printf("proc %d concluido\ntemp total %ld\ntrocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
+    // printf("proc %d concluido\ntemp total %ld\ntrocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
+    printf("proc %d concluido, temp total %ld, trocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
     t[id].id = -1;
 }
 
 void kill_prog(scheduler *s, proc *t) 
 {
-
+    int estado;
+    for (int i = 0; i < QUEUE_SIZE; i++) {
+        if (t[i].id != -1) {
+            kill(t[i].pid, SIGKILL);
+            t[i].id = -1;
+            wait(&estado);
+        }
+    }
+    printf("%d procs encerrados\n%d procs cancelados\n%d trocas de contexto\n", s->executed_procs, s->procs_on_progress, s->context_switches);
 
 }
 
@@ -295,18 +305,20 @@ int main()
     kill_proc(scheduler, queues, proc_table);
     add_proc(scheduler, queues, proc_table);
     select_proc_to_exec(scheduler, queues, proc_table);
-    while(scheduler->proc_executing > -1){
-        check_proc_table(proc_table);
-        int id = proc_table[scheduler->proc_executing].id;
-        printf("proc %d executando\n", id);
-        kill(proc_table[scheduler->proc_executing].pid, SIGCONT);
-        wait(&estado);
-        remove_proc(scheduler, queues, proc_table);
-        select_proc_to_exec(scheduler, queues, proc_table);
-        // sleep(20);
-    }
+    // while(scheduler->proc_executing > -1){
+    //     check_proc_table(proc_table);
+    //     int id = proc_table[scheduler->proc_executing].id;
+    //     printf("proc %d executando\n", id);
+    //     kill(proc_table[scheduler->proc_executing].pid, SIGCONT);
+    //     wait(&estado);
+    //     remove_proc(scheduler, queues, proc_table);
+    //     select_proc_to_exec(scheduler, queues, proc_table);
+    //     // sleep(20);
+    // }
+    sleep(10);
+    kill_prog(scheduler, proc_table);
+    sleep(10);
     check_proc_table(proc_table);
-    execlp("ps", "ps", NULL);
 
     // Cria fila de mensagem para criar procos
     // Cria fila de mensagem para fechar procos
@@ -350,5 +362,6 @@ int main()
  * [X] Testar o kill proc
  * [X] Testar remove proc
  * [X] Criar kill prog
- * [ ] Executar programa
+ * [X] Executar programa
+ * [ ] 
  */
