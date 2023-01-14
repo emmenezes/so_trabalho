@@ -37,7 +37,7 @@
 typedef struct
 {
     int priority;
-    char *file_name;
+    char file_name[20];
 } msg;
 
 typedef struct
@@ -46,7 +46,6 @@ typedef struct
     int id;
     int context_switches;
     time_t start_time;
-    time_t end_time;
     int prev_id;
     int next_id;
     int priority;
@@ -117,16 +116,16 @@ void initialize_proc_table(proc *t)
 
 void check_proc_table(proc *t)
 {
-    printf("i, id, pid, prev_id, next_id\n");
+    printf("i\tid\tpid\tprev_id\tnext_id\n");
     for (int i = 0; i < QUEUE_SIZE; i++)
-        printf("\t%d\t%d\t%d\t%d\t%d\n", i, t[i].id, t[i].priority, t[i].prev_id, t[i].next_id);
+        printf("%d\t%d\t%d\t%d\t%d\n", i, t[i].id, t[i].pid, t[i].prev_id, t[i].next_id);
 }
 
 void check_queues(queue *q) 
 {
+    printf("queue\tsize\tfirst\tlast\n");
     for (int i = 0; i < 3; i++) {
-        printf("size\tfirst\tlast\t##%d\n", i);
-        printf("%d\t%d\t %d\n", q[i].size, q[i].first_id, q[i].last_id);
+        printf("%d\t%d\t%d\t %d\n", i, q[i].size, q[i].first_id, q[i].last_id);
     }
 }
 
@@ -142,12 +141,11 @@ void add_proc(scheduler *s, queue *q, proc *t)
     }
     if (pid == 0)
     {
-        kill(getpid(), SIGKILL);    // TODO: Processo se matando
-        char *s = "./";
+        char s[] = "./";
         strcat(s, msg_rcv.file_name);
+        kill(getpid(), SIGSTOP);    // TODO: Processo se matando
         execlp(s, msg_rcv.file_name, (char *)0);
     }
-
     int priority = msg_rcv.priority -1;
     int id = -1;
     for (int i = 0; i < QUEUE_SIZE; i++)
@@ -169,7 +167,7 @@ void add_proc(scheduler *s, queue *q, proc *t)
             else
                 t[q[priority].last_id].next_id = i;
             q[priority].last_id = i;
-            printf("processo %d adicionado na pos %d no tempo %ld\n", t[i].id, i, t[i].start_time);
+            printf("processo %d adicionado na pos %d, pid %d\n", t[i].id, i, t[i].pid);
             s->next_id++;
             break;
         }
@@ -184,15 +182,14 @@ void relocate_proc(scheduler *s, queue *q, proc *t)
     int priority = t[id].priority;
     q[priority].size--;
     q[priority].first_id = t[id].next_id;
-    t[q[priority].first_id].prev_id = -1;
+    if (q[priority].first_id != -1)
+        t[q[priority].first_id].prev_id = -1;
     t[id].next_id = -1;
-
     if (s->priority_mode == RANDOM_MODE) {
         // TODO
     } else if (s->priority_mode == DYNAMIC_MODE) {
         // TODO
     }
-
     q[priority].size++;
     t[id].prev_id = q[priority].last_id;
     if (q[priority].size == 1)
@@ -203,7 +200,7 @@ void relocate_proc(scheduler *s, queue *q, proc *t)
 }
 
 void select_proc_to_exec(scheduler *s, queue *q, proc *t) {
-    int id;
+    int id = -1;
     for (int i = 0; i < 3; i++) {
         id = q[i].first_id;
         if (id != -1) {
@@ -219,7 +216,6 @@ void kill_proc(scheduler *s, queue *q, proc *t) {
     s->procs_on_progress--;
     int id = -1, estado;
     for (int i = 0; i < QUEUE_SIZE; i++) {
-        printf("%d id %d\n", i, t[i].id);
         if (t[i].id == rm_proc_id) {
             id = i;
             break;
@@ -235,26 +231,39 @@ void kill_proc(scheduler *s, queue *q, proc *t) {
     if (s->proc_executing == id) {
         // alarm(0); ressetar alarme
     }
-    
-    t[t[id].prev_id].next_id = t[id].next_id;
-    t[t[id].next_id].prev_id = t[id].prev_id;
+    if (t[id].prev_id != -1)
+        t[t[id].prev_id].next_id = t[id].next_id;
+    if (t[id].next_id != -1)
+        t[t[id].next_id].prev_id = t[id].prev_id;
     q[priority].size--;
     if (q[priority].first_id == id)
         q[priority].first_id = t[id].next_id;
     if (q[priority].last_id == id)
         q[priority].last_id = t[id].prev_id;
-    t[id].id = -1;
-    printf("proc %d encerrado\ntemp total %ld\ntrocas de contexto %d\n\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
     kill(t[id].pid, SIGKILL);
+    t[id].id = -1;
     wait(&estado);
+    printf("proc %d encerrado\ntempo total %ld\ntrocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
 }
 
 void remove_proc(scheduler *s, queue *q, proc *t) {
-    
+    s->procs_on_progress--;
+    s->executed_procs++;
+    int id = s->proc_executing;
+    int priority = t[id].priority;
+    q[priority].size--;
+    q[priority].first_id = t[id].next_id;
+    t[q[priority].first_id].prev_id = -1;
+    t[id].next_id = -1;
+    time_t now;
+    time_t end_time = time(&now);
+    printf("proc %d concluido\ntemp total %ld\ntrocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
+    t[id].id = -1;
 }
 
 void kill_prog(scheduler *s, proc *t) 
 {
+
 
 }
 
@@ -275,25 +284,29 @@ int main()
     initialize_queue(queues);
     initialize_proc_table(proc_table);
 
-    msg_rcv.file_name = "ex04";
+    strcpy(msg_rcv.file_name, "ex04");
     msg_rcv.priority = 1;
-
     add_proc(scheduler, queues, proc_table);
     add_proc(scheduler, queues, proc_table);
     add_proc(scheduler, queues, proc_table);
     select_proc_to_exec(scheduler, queues, proc_table);
     relocate_proc(scheduler, queues, proc_table);
     rm_proc_id = 1;
-    sleep(1);
     kill_proc(scheduler, queues, proc_table);
     add_proc(scheduler, queues, proc_table);
-    check_queues(queues);
     select_proc_to_exec(scheduler, queues, proc_table);
-    relocate_proc(scheduler, queues, proc_table);
-    // check_queues(queues);
-    select_proc_to_exec(scheduler, queues, proc_table);
-    printf("proc %d\n", scheduler->proc_executing);
-    wait(&estado);
+    while(scheduler->proc_executing > -1){
+        check_proc_table(proc_table);
+        int id = proc_table[scheduler->proc_executing].id;
+        printf("proc %d executando\n", id);
+        kill(proc_table[scheduler->proc_executing].pid, SIGCONT);
+        wait(&estado);
+        remove_proc(scheduler, queues, proc_table);
+        select_proc_to_exec(scheduler, queues, proc_table);
+        // sleep(20);
+    }
+    check_proc_table(proc_table);
+    execlp("ps", "ps", NULL);
 
     // Cria fila de mensagem para criar procos
     // Cria fila de mensagem para fechar procos
@@ -333,7 +346,9 @@ int main()
  * [X] Testar relocate_proc
  * [X] Testar select_proc_to_exec
  * [X] Testar com mais processos
- * [ ] Criar kill proc
- * [ ] Testar o kill proc
- * [ ] Criar terminar programa
+ * [X] Criar kill proc
+ * [X] Testar o kill proc
+ * [X] Testar remove proc
+ * [X] Criar kill prog
+ * [ ] Executar programa
  */
