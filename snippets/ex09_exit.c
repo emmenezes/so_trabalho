@@ -5,10 +5,12 @@
 #include <sys/msg.h>
 #include <sys/types.h>
 #include <signal.h>
+#include <string.h>
 #include <unistd.h>
 
 struct msg {
     int id;
+    char file_name[30];
 };
 
 int main() {
@@ -20,7 +22,8 @@ int main() {
         printf("erro na obtenção da fila da fila\n");
     }
     msg_env.id = -1;
-    msgsnd(idfila, &msg_env, sizeof(msg_env), IPC_NOWAIT);
+    strcpy(msg_env.file_name, "");
+    msgsnd(idfila, &msg_env, sizeof(msg_env), 0);
 
     FILE *cmd = popen("pidof ex10", "r");
     fgets(line, LEN, cmd);
