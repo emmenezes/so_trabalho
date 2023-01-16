@@ -13,6 +13,7 @@
 struct msg
 {
     int id;
+    char file_name[30];
 };
 
 struct msg msg_rec;
@@ -33,12 +34,10 @@ void func_sig_close()
     msgrcv(idfila, &msg_rec, sizeof(msg_rec), 0, 0);
     if (msg_rec.id == -1)
     {
-        printf("INTR_EXIT\n");
         interruption = INTR_EXIT;
     }
     else
     {
-        printf("INTR_CLOSE %d\n", msg_rec.id);
         interruption = INTR_CLOSE;
     }
 }
@@ -52,9 +51,21 @@ int main()
     signal(SIGUSR1, func_sig_create);
     signal(SIGUSR2, func_sig_close);
 
-    while(1) {
-        if (interruption == INTR_EXIT){
+    while (1)
+    {
+        if (interruption == INTR_EXIT)
+        {
             break;
+        }
+        else if (interruption == INTR_CLOSE)
+        {
+            interruption = 0;
+            printf("deletar processo %d\n", msg_rec.id);
+        }
+        else if (interruption == INTR_CREATE)
+        {
+            interruption = 0;
+            printf("criar processo com nome %s\n", msg_rec.file_name);
         }
     }
     msgctl(idfila, IPC_RMID, &info);
