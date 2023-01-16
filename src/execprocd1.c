@@ -1,3 +1,4 @@
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -8,15 +9,16 @@
 #include <unistd.h>
 #include <sys/wait.h>
 #include <signal.h>
+#include <string.h>
 
-#define KEY 25696
+#define KEY 0x25696
 
 void usr1(){
-    printf("1");
+    printf("Recebi o SIGUSR1\n");
 }
 
 void usr2(){
-    printf("2");
+    printf("Recebi o SIGUSR2\n");
 }
 
 void main(){
@@ -27,12 +29,16 @@ void main(){
     */
     pid_t pid; 
     int status; //estado do processo filho    
-    int idFila;
+    int idFila; // identificador da fila
 
-    struct sigaction sa;
-    //sa.sa_handler = &SigHandler;
+    struct mensagem{
+        long pid;
+        char msg[30];
+    };
     
-    if( (idFila = msgget(KEY, IPC_CREAT | 0x1FF)) < 0){
+    struct mensagem msg_env, msg_rec;
+    
+    if( (idFila = msgget(KEY, IPC_CREAT | IPC_EXCL | 0x1FF)) < 0){ //criando fila com ipc exclusivo
         printf("Erro ao criar fila\n");
         exit(1);
     }
@@ -42,8 +48,14 @@ void main(){
     }
     
     if(pid == 0){// filho
-        printf("Sou o processo filho.\nPid Filho: %d\n", getpid());
-           
+        printf("Sou o processo filho.\n");
+        msg_env.pid = getpid();
+        printf("Pid Filho: %d\n", getpid());
+        sleep(30);
+        /*envia o idFila, o tamanho de mensagem enviada, tira o long e eh blocante */
+        msgsnd(idFila, &msg_env, sizeof(msg_env)-sizeof(long), 0); 
+
+        /* quando receber os sinais SIGUSR desvia para as funções*/
         signal(SIGUSR1, usr1);
         signal(SIGUSR2, usr2);
         kill(getpid(), SIGUSR1);
@@ -60,5 +72,5 @@ void main(){
         exit(0); //morreu
     }
 
-
+    /* implementar o sigalrm para o quantum*/
 }
