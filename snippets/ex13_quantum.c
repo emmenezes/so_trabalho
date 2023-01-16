@@ -6,35 +6,46 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
-int pid, alert = 0;
+int pid, alert = 0, estado;
 
-void quantum(){
-    printf("para paro\n");
-    kill(pid, SIGSTOP);
-    alert = 1;
+void quantum()
+{
+    if (waitpid(pid, &estado, WNOHANG)) {
+        printf("ta morto\n");
+        alert = 1;
+    } else {
+        printf("ta vivo\n");
+        kill(pid, SIGSTOP);
+        alert = -1;
+    }
+    alarm(0);
 }
-
 
 int main()
 {
     signal(SIGALRM, quantum);
 
-    int estado = 0;
-    if ((pid = fork()) < 0) {
+    if ((pid = fork()) < 0)
+    {
         printf("erro no fork\n");
         exit(1);
     }
-    if (pid == 0) {
+    if (pid == 0) // processo filho
+    {
         kill(getpid(), SIGSTOP);
-        execlp("./30sec", "30sec", (char * ) 0);
-    } else {
-        alarm(4);
-        kill(pid, SIGCONT);
-        if (alert || wait(&estado)) {
-            printf("interrompeu\n");
-            kill(pid, SIGKILL);
-        } else {
-            printf("acabou\n");
+        execlp("./30sec", "30sec", (char *)0);
+    }
+    else // processo pai
+    {
+        printf("pid %d\n", pid);
+        alert = -1;
+        kill(pid, SIGSTOP);
+        while(alert != 1) {
+            if (alert != 0) {
+                kill(pid, SIGCONT);
+                alarm(4);
+                alert = 0;
+            }
         }
     }
     printf("cabou mesmo\n");
