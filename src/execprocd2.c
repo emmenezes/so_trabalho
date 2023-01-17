@@ -22,6 +22,8 @@
 #define LOW_PRIORITY 3
 #define INTR_CREATE 1
 #define INTR_CLOSE 2
+#define INTR_EXIT 3
+#define IPC_ID 2353
 
 #include <errno.h>
 #include <signal.h>
@@ -36,8 +38,8 @@
 
 typedef struct
 {
-    int priority;
-    char file_name[20];
+    int id;
+    char file_name[30];
 } msg;
 
 typedef struct
@@ -70,21 +72,28 @@ typedef struct
 
 int rm_proc_id = 0;
 int interruption = 0;
-msg msg_rcv = {.priority = -1, .file_name = ""};
+int idfila;
+msg msg_rcv = {.id = -1, .file_name = ""};
+struct msqid_ds info;
 
-// SIGUSR1
 void func_sig_create()
 {
-    // Acessa fila
-    // Seta msg_rec
+    msgrcv(idfila, &msg_rcv, sizeof(msg_rcv), 0, 0);
     interruption = INTR_CREATE;
 }
-// SIGUSR2
+
 void func_sig_close()
 {
-    // Acessa fila
-    // Seta id
-    interruption = INTR_CLOSE;
+    msgrcv(idfila, &msg_rcv, sizeof(msg_rcv), 0, 0);
+    printf("msg_rcv id %d\n", msg_rcv.id);
+    if (msg_rcv.id == -1)
+    {
+        interruption = INTR_EXIT;
+    }
+    else
+    {
+        interruption = INTR_CLOSE;
+    }
 }
 
 void initialize_scheduler(scheduler *s, int mode)
@@ -95,7 +104,6 @@ void initialize_scheduler(scheduler *s, int mode)
     s->executed_procs = 0;
     s->procs_on_progress = 0;
     s->proc_executing = -1;
-    
 }
 
 void initialize_queue(queue *q)
@@ -121,10 +129,11 @@ void check_proc_table(proc *t)
         printf("%d\t%d\t%d\t%d\t%d\n", i, t[i].id, t[i].pid, t[i].prev_id, t[i].next_id);
 }
 
-void check_queues(queue *q) 
+void check_queues(queue *q)
 {
     printf("queue\tsize\tfirst\tlast\n");
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++)
+    {
         printf("%d\t%d\t%d\t %d\n", i, q[i].size, q[i].first_id, q[i].last_id);
     }
 }
@@ -146,7 +155,8 @@ void add_proc(scheduler *s, queue *q, proc *t)
         kill(getpid(), SIGSTOP);
         execlp(s, msg_rcv.file_name, (char *)0);
     }
-    int priority = msg_rcv.priority -1;
+    kill(pid, SIGSTOP);
+    int priority = msg_rcv.id - 1;
     int id = -1;
     for (int i = 0; i < QUEUE_SIZE; i++)
     {
@@ -185,9 +195,12 @@ void relocate_proc(scheduler *s, queue *q, proc *t)
     if (q[priority].first_id != -1)
         t[q[priority].first_id].prev_id = -1;
     t[id].next_id = -1;
-    if (s->priority_mode == RANDOM_MODE) {
+    if (s->priority_mode == RANDOM_MODE)
+    {
         // TODO
-    } else if (s->priority_mode == DYNAMIC_MODE) {
+    }
+    else if (s->priority_mode == DYNAMIC_MODE)
+    {
         // TODO
     }
     q[priority].size++;
@@ -199,11 +212,14 @@ void relocate_proc(scheduler *s, queue *q, proc *t)
     q[priority].last_id = id;
 }
 
-void select_proc_to_exec(scheduler *s, queue *q, proc *t) {
+void select_proc_to_exec(scheduler *s, queue *q, proc *t)
+{
     int id = -1;
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 3; i++)
+    {
         id = q[i].first_id;
-        if (id != -1) {
+        if (id != -1)
+        {
             t[id].context_switches++;
             break;
         }
@@ -212,24 +228,29 @@ void select_proc_to_exec(scheduler *s, queue *q, proc *t) {
     s->context_switches++;
 }
 
-void kill_proc(scheduler *s, queue *q, proc *t) {
-    s->procs_on_progress--;
+void kill_proc(scheduler *s, queue *q, proc *t)
+{
     int id = -1, estado;
-    for (int i = 0; i < QUEUE_SIZE; i++) {
-        if (t[i].id == rm_proc_id) {
+    for (int i = 0; i < QUEUE_SIZE; i++)
+    {
+        if (t[i].id == msg_rcv.id)
+        {
             id = i;
             break;
         }
     }
-    if (id == -1) {
-        printf("\nproc %d nao encontrado\n\n", rm_proc_id);
+    if (id == -1)
+    {
+        printf("proc %d nao encontrado\n", msg_rcv.id);
         return;
     }
     time_t now;
     time_t end_time = time(&now);
+    s->procs_on_progress--;
     int priority = t[id].priority;
-    if (s->proc_executing == id) {
-        // alarm(0); ressetar alarme
+    if (s->proc_executing == id)
+    {
+        // TODO alarm(0); ressetar alarme
     }
     if (t[id].prev_id != -1)
         t[t[id].prev_id].next_id = t[id].next_id;
@@ -247,7 +268,8 @@ void kill_proc(scheduler *s, queue *q, proc *t) {
     t[id].id = -1;
 }
 
-void remove_proc(scheduler *s, queue *q, proc *t) {
+void remove_proc(scheduler *s, queue *q, proc *t)
+{
     s->procs_on_progress--;
     s->executed_procs++;
     int id = s->proc_executing;
@@ -263,18 +285,19 @@ void remove_proc(scheduler *s, queue *q, proc *t) {
     t[id].id = -1;
 }
 
-void kill_prog(scheduler *s, proc *t) 
+void kill_prog(scheduler *s, proc *t)
 {
     int estado;
-    for (int i = 0; i < QUEUE_SIZE; i++) {
-        if (t[i].id != -1) {
+    for (int i = 0; i < QUEUE_SIZE; i++)
+    {
+        if (t[i].id != -1)
+        {
             kill(t[i].pid, SIGKILL);
             t[i].id = -1;
             wait(&estado);
         }
     }
     printf("%d procs encerrados\n%d procs cancelados\n%d trocas de contexto\n", s->executed_procs, s->procs_on_progress, s->context_switches);
-
 }
 
 int main()
@@ -284,6 +307,11 @@ int main()
 
     signal(SIGUSR1, func_sig_create);
     signal(SIGUSR2, func_sig_close);
+    if ((idfila = msgget(IPC_ID, IPC_CREAT | 0x1FF)) < 0)
+    {
+        printf("erro na criação da fila\n");
+        return 1;
+    }
 
     int alarm_time, estado;
     scheduler *scheduler = malloc(sizeof(scheduler));
@@ -294,17 +322,35 @@ int main()
     initialize_queue(queues);
     initialize_proc_table(proc_table);
 
-    strcpy(msg_rcv.file_name, "ex04");
-    msg_rcv.priority = 1;
-    add_proc(scheduler, queues, proc_table);
-    add_proc(scheduler, queues, proc_table);
-    add_proc(scheduler, queues, proc_table);
-    select_proc_to_exec(scheduler, queues, proc_table);
-    relocate_proc(scheduler, queues, proc_table);
-    rm_proc_id = 1;
-    kill_proc(scheduler, queues, proc_table);
-    add_proc(scheduler, queues, proc_table);
-    select_proc_to_exec(scheduler, queues, proc_table);
+    while (1)
+    {
+        if (interruption != 0) {
+            printf("interrupcao %d\n", interruption);
+            if (interruption == INTR_EXIT) {
+                kill_prog(scheduler, proc_table);
+                break;
+            } else if (interruption == INTR_CLOSE) {
+                kill_proc(scheduler, queues, proc_table);
+            } else if (interruption) {
+                add_proc(scheduler, queues, proc_table);
+            }
+            interruption = 0;
+        }
+    }
+    msgctl(idfila, IPC_RMID, &info);
+    sleep(10);
+
+    // strcpy(msg_rcv.file_name, "ex04");
+    // msg_rcv.id = 1;
+    // add_proc(scheduler, queues, proc_table);
+    // add_proc(scheduler, queues, proc_table);
+    // add_proc(scheduler, queues, proc_table);
+    // select_proc_to_exec(scheduler, queues, proc_table);
+    // relocate_proc(scheduler, queues, proc_table);
+    // rm_proc_id = 1;
+    // kill_proc(scheduler, queues, proc_table);
+    // add_proc(scheduler, queues, proc_table);
+    // select_proc_to_exec(scheduler, queues, proc_table);
     // while(scheduler->proc_executing > -1){
     //     check_proc_table(proc_table);
     //     int id = proc_table[scheduler->proc_executing].id;
@@ -315,10 +361,10 @@ int main()
     //     select_proc_to_exec(scheduler, queues, proc_table);
     //     // sleep(20);
     // }
-    sleep(10);
-    kill_prog(scheduler, proc_table);
-    sleep(10);
-    check_proc_table(proc_table);
+    // sleep(10);
+    // kill_prog(scheduler, proc_table);
+    // sleep(10);
+    // check_proc_table(proc_table);
 
     // Cria fila de mensagem para criar procos
     // Cria fila de mensagem para fechar procos
@@ -347,21 +393,6 @@ int main()
 
 /**
  * @brief TODO
- *  - Checar qnts processos estão sendo criados no ex05
- *  - Definir etapas de teste
- *  - Começar a testar
- *
- * [X] Conferir se inicializações funcionam
- * [X] Testar add_proc
- * [X] Testar select_proc_to_exec
- * [X] Criar relocate_proc
- * [X] Testar relocate_proc
- * [X] Testar select_proc_to_exec
- * [X] Testar com mais processos
- * [X] Criar kill proc
- * [X] Testar o kill proc
- * [X] Testar remove proc
- * [X] Criar kill prog
- * [X] Executar programa
- * [ ] 
+ * [ ] Exemplificar uso
+ * [ ] Apresentar níveis de prioridade
  */
