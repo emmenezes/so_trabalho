@@ -1,69 +1,50 @@
 # Trabalho de SO - 2022/2
 
+O projeto consiste da confecção de um escalonador. Todos os arquivos finais estão na pasta **src**.
 
-## Snippets
-Lista de todos os snippets. Existem 3 categorias de snippets:
-
-* *sl* -  exemplos do slide *202001_so5_unix*, e o número se refere à página do slide.
-* *ex* - exemplos próprios
-* *cd* - códigos isolados do trabalho
-
-## Comandos para análise
-
-|Comando    |Argumentos |Explicação |
-|-          |-          |-          |
-|ps -l      |-          |Lista de processos com vários campos |
-||||
+Alunas:
+* Alícia Rita Oliveira Dos Reis - 17/0129306
+* Cintia Leal Rodrigues - 17/0125696
+* Emme Costa de Menezes - 17/0032353
 
 
-## execprocd (background)
+## execprocd 
+Processo de background que gerencia os processos. Em sua chamada, é preciso passar o modo de prioridade, sendo:
+- 1: escolha randômica
+- 2: prioridade estática
+- 3: prioridade dinâmica
 
-O que faz:
+```
+./execprocd <modo_prioridade>
+```
 
-- Cria processos filhos 
-- Espera a morte dos processos filhos
-    - Id
-    - Tempo total de execução
-    - Número de trocas de contexto
-- Determina quantum (parar o filho)
+## execproc
+Processo que solicita a execução de outro processo. Em sua chamada, é preciso passar a prioridade (um número de 1 a 3, onde 1 é a mais alta prioridade) e o nome do arquivo executável.
 
-- Reformular as filas de prioridade
-    - Determinar nova prioridade do processo recém-executado
-    - Coloca no fim da fila 
-    - Determina novo processo a ser executado
-- Espera msg da fila de novos processos ({nome do arquivo, prioridade})
-    - Imprimir o id
+```
+./execproc <prioridade> <arquivo>
+```
+Retorna id do processo.
 
-- Espera msg da fila de fim de processos (id ou -1) 
-    - Finalizar 1 processo
-        - Id
-        - Tempo total de execução
-        - Número de trocas de contexto
-    - Finalizar tudo
-        - Número total de processos executados
-        - Número de processos cancelados
-        - Número total de trocas de contexto ocorridas
+## cancela_proc
+Processo que solicita cancelamento do processo com bas
+```
+./cancela_proc <id_procesoo>
+```
+Retorna id do processo, tempo de execução e quantidade trocas de contexto.
 
-## Coisas para fazer
+## termina_execprocd
+Processo que solicita fim da execução.
+```
+./termina_execprocd
+```
+Retorna quantidade de processos concluído, quantidade de processos cancelados e quantidade de trocas de contexto.
 
-1. execproc
-    - fazer uso da fila e executar programa
-2. cancela_proc e termina_execprocessod
-    - passar inteiros por fila
-3. execprocd 1
-    - cria processos filhos (impressões)
-    - espera a morte dos filhos (impressões)
-        - id
-        - tempo total de execução
-        - número de trocas de contexto
-    - para filho no quantum
-4. execprocd 2
-    - fila de arquivos
-    - recebe arquivos do exeproc
-    - recebe cancela_proc e termina (impressões)
-5. execprocd 3 **
-    - fila de prioridades
-6. execprocd final ** 
+## outros
 
-
-
+* Há dois programas com duração longa, um de **14 segundos** e um de **37 segundos** que também estão na pasta **src**.
+* Quando um processo é concluído, retorna id do processo, tempo de execução e quantidade trocas de contexto.
+* Sempre que o modo de prioridade não é estático, há uma mensagem alertando sobre a nova prioridade do processo.
+* À cada execução, é exibida uma mensagem informando qual processo está sendo executado e sua prioridade.
+* As funções auxiliares *check_proc_table* e *check_queues* são utéis para checar a situação do background
+* Na linha 334 de execprocd, está comentada a função *check_queues* que pode auxiliar no acompanhamento das filas de prioridade.
