@@ -105,7 +105,6 @@ void check_queues(queue *q)
 
 void add_proc(scheduler *s, queue *q, proc *t)
 {
-    // Precisa de todas as filas
     int pid;
     time_t now;
     if ((pid = fork()) < 0)
@@ -243,7 +242,6 @@ void remove_proc(scheduler *s, queue *q, proc *t)
     q[priority].size--;
     q[priority].first_id = t[id].next_id;
     t[q[priority].first_id].prev_id = -1;
-    // t[id].next_id = -1;
     time_t now;
     time_t end_time = time(&now);
     printf("proc %d concluido, temp total %ld, trocas de contexto %d\n", t[id].id, end_time - t[id].start_time, t[id].context_switches);
