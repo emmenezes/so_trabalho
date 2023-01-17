@@ -1,34 +1,54 @@
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
 #include <errno.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
-#include <sys/wait.h>
+#include <signal.h>
+#include <string.h>
 #include <unistd.h>
-#define MATRICULA0 170032356
-#define MATRICULA1 170125696
-#define MATRICULA2 170129306
 
-int main()
+#define IPC_ID 2353
+
+struct msg {
+    int id;
+    char file_name[30];
+};
+
+int main(int argc, char *argv[])
 {
-    int pid, idfila, estado;
-    struct msg 
+    int idfila, LEN = 10;
+    char line[LEN];
+    char *p;
+    long arg = 0;
+    struct msg msg_env;
+    
+    if (argc == 3)
     {
-        long pid;
-        char msg[100];
-    };
-
-    struct msg msg_env, msg_rec;
-    if ((idfila = msgget(MATRICULA0, IPC_CREAT|0x1FF)) < 0 || 
-        (idfila = msgget(MATRICULA1, IPC_CREAT|0x1FF)) < 0 || 
-        (idfila = msgget(MATRICULA2, IPC_CREAT|0x1FF)) < 0)
+        arg = strtol(argv[1], &p, 10);
+        if (*p != '\0' || errno != 0)
+        {
+            printf("Argumento invalido, insera apenas o numero do processo que deseja encerrar\n");
+            return 1; 
+        }
+        msg_env.id = arg;
+        strcpy(msg_env.file_name, argv[2]);
+    }
+    else
     {
-        printf("Erro na criação da fila\n");
-        exit(1);
+        printf("Quantidade de argumentos invalida, insira apenas o número do processo que deseja encerrar\n");
+        return 1;
     }
 
-    //chamada dos processos, se encontra no execprocd, onde tem o fork.
-    
+    if ((idfila = msgget(IPC_ID, 0x124)) < 0)
+    {
+        printf("erro na obtenção da fila da fila\n");
+    }
+    msgsnd(idfila, &msg_env, sizeof(msg_env), 0);
+
+    FILE *cmd = popen("pidof ex2", "r");
+    fgets(line, LEN, cmd);
+    pid_t pid = strtoul(line, NULL, 10);
+    kill(pid, SIGUSR1);
+    pclose(cmd);
 }
