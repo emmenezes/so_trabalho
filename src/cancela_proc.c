@@ -4,7 +4,6 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
-#include <signal.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -18,9 +17,8 @@ struct msg
 
 int main(int argc, char *argv[])
 {
-    int idfila, LEN = 10;
+    int idfila;
     long arg = 0;
-    char line[LEN];
     char *p;
     struct msg msg_env;
 
@@ -46,10 +44,4 @@ int main(int argc, char *argv[])
         printf("erro na obtenção da fila da fila\n");
     }
     msgsnd(idfila, &msg_env, sizeof(msg_env), 0);
-
-    FILE *cmd = popen("pidof ex2", "r");
-    fgets(line, LEN, cmd);
-    pid_t pid = strtoul(line, NULL, 10);
-    kill(pid, SIGUSR2);
-    pclose(cmd);
 }

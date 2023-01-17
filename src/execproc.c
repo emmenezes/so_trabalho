@@ -4,34 +4,33 @@
 #include <sys/ipc.h>
 #include <sys/msg.h>
 #include <sys/types.h>
-#include <signal.h>
 #include <string.h>
 #include <unistd.h>
 
 #define IPC_ID 2353
 
-struct msg {
+struct msg
+{
     int id;
     char file_name[30];
 };
 
 int main(int argc, char *argv[])
 {
-    int idfila, LEN = 10;
-    char line[LEN];
+    int idfila;
     char *p;
     long arg = 0;
     struct msg msg_env;
-    
+
     if (argc == 3)
     {
         arg = strtol(argv[1], &p, 10);
         if (*p != '\0' || errno != 0)
         {
             printf("Argumento invalido, insera apenas o numero do processo que deseja encerrar\n");
-            return 1; 
+            return 1;
         }
-        msg_env.id = arg;
+        msg_env.id = arg + 100;
         strcpy(msg_env.file_name, argv[2]);
     }
     else
@@ -45,10 +44,4 @@ int main(int argc, char *argv[])
         printf("erro na obtenção da fila da fila\n");
     }
     msgsnd(idfila, &msg_env, sizeof(msg_env), 0);
-
-    FILE *cmd = popen("pidof ex2", "r");
-    fgets(line, LEN, cmd);
-    pid_t pid = strtoul(line, NULL, 10);
-    kill(pid, SIGUSR1);
-    pclose(cmd);
 }
